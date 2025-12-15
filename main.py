@@ -11,6 +11,8 @@ import torchvision
 import torch.optim
 from tqdm import tqdm
 import os
+import joblib
+import gc
 
 if __name__ == "__main__":
     root_dir = './dataset'
@@ -28,13 +30,24 @@ if __name__ == "__main__":
     model.to(device)
     optimizer = torch.optim.Adam(params = model.parameters(), lr = 0.001)
     criteria = nn.L1Loss()
-    
-  
-    for epoch in range(epochs):
+    if not os.path.exists('./checkpoint'):
+        os.makedirs('./checkpoint')
+    gc.collect()
+    torch.cuda.empty_cache()
+    start_epoch = 1
+    try: 
+        last_checkpoint = sorted(os.listdir('./checkpoint'))[-1]
+        model.load_state_dict(torch.load(os.path.join('./checkpoint', last_checkpoint)))
+        start_epoch = int(last_checkpoint.split('_')[-1].split('.')[0])
+        print(f"Loaded checkpoint: {last_checkpoint}")
+        print(f"Resuming training from epoch {start_epoch}")
+    except:
+        print("No checkpoint found, training from scratch.")
+    for epoch in range(epochs-start_epoch):
         model.train()
         train_loss = 0.0
-        train_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]")
-        for low_img, light_img in train_loader:
+        train_bar = tqdm(train_loader, desc=f"Epoch {epoch+start_epoch+1}/{epochs} [Train]")
+        for low_img, light_img in train_bar:
             low_img = low_img.to(device)
             light_img = light_img.to(device)
             optimizer.zero_grad()
@@ -48,8 +61,9 @@ if __name__ == "__main__":
         model.eval()
         avg_train_loss = train_loss / len(train_loader)
         valid_loss = 0
+        torch.save(model.state_dict(), f'./checkpoint/generator_epoch_{epoch+start_epoch+1}.pth')
         with torch.no_grad():
-            val_bar = tqdm(valid_loader, desc=f"Epoch {epoch+1}/{epochs} [Valid]")
+            val_bar = tqdm(valid_loader, desc=f"Epoch {epoch+start_epoch+1}/{epochs} [Valid]")
             for low_img, light_img in val_bar:
                 low_img = low_img.to(device)
                 light_img = light_img.to(device)
@@ -58,3 +72,6 @@ if __name__ == "__main__":
                 valid_loss += loss.item()
                 val_bar.set_postfix(loss=loss.item())
         avg_valid_loss = valid_loss / len(valid_loader)
+        
+
+        
