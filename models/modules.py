@@ -20,8 +20,8 @@ class MSFEM(nn.Module):
 
     def forward(self, x):
         x1 = self.Relu(self.branch1(x))
-        x2 = self.Relu(self.branch1(x))
-        x3 = self.Relu(self.branch1(x))
+        x2 = self.Relu(self.branch2(x))
+        x3 = self.Relu(self.branch3(x))
         combination = torch.cat([x1,x2,x3], dim = 1)
         x4 = self.comb(combination)
         return x4
@@ -71,6 +71,9 @@ class Decoder(nn.Module):
         super().__init__()
         arr_layer = []
         input_deconv = input_size
+        if use_tanh == True:
+            output_tanh = output_size
+            output_size = input_size // 4
         if use_conv:
             arr_layer.append(nn.Conv2d(in_channels=input_size, out_channels= input_size // 2, kernel_size= kernel_size, stride = stride, padding = padding))
             arr_layer.append(nn.LeakyReLU())
@@ -82,7 +85,7 @@ class Decoder(nn.Module):
         if use_deconv:
             arr_layer.append(nn.ConvTranspose2d(input_deconv, output_size,3,2,1))
         if use_tanh:
-            arr_layer.append(nn.Conv2d(input_deconv, output_size, kernel_size= kernel_size, stride = stride, padding = padding))
+            arr_layer.append(nn.Conv2d(input_deconv, output_tanh, kernel_size= kernel_size, stride = stride, padding = padding))
             arr_layer.append(nn.Tanh())
         self.block = nn.Sequential(*arr_layer)
         
@@ -124,50 +127,91 @@ class Generator(nn.Module):
         
         return d1
         
+class Local_Discriminator(nn.Module):
+        def __init__(self, in_channels = 3, kernel_size = 4, stride = 2, padding = 1) -> None:
+            super().__init__()
+            self.encode1 = nn.Conv2d(in_channels=in_channels, out_channels= 32, kernel_size=kernel_size, stride=stride,padding=padding)
+            self.leakyRelu = nn.LeakyReLU()
+            self.encode2 = nn.Conv2d(in_channels=32, out_channels= 64, kernel_size=kernel_size, stride=stride,padding=padding)
+            self.encode3 = nn.Conv2d(in_channels=64, out_channels= 128, kernel_size=kernel_size, stride=stride,padding=padding)
+            self.encode4 = nn.Conv2d(in_channels=128, out_channels= 256, kernel_size=kernel_size, stride=stride,padding=padding)
+            self.encode5 = nn.Conv2d(in_channels=256, out_channels= 512, kernel_size=kernel_size, stride=stride,padding=padding)
+            self.encode6 = nn.Conv2d(in_channels=512, out_channels= 1, kernel_size=kernel_size, stride=1,padding=padding)
 
-if __name__ == "__main__":
-    root_dir = './dataset'
-    if not os.path.exists(root_dir):
-        print("Dataset not found")
-        exit()
-    mode = 'train'
-    batch_size = 16
-    num_workers = 4
-    train_loader = get_loader(root_dir, mode, batch_size, num_workers)
-    valid_loader = get_loader(root_dir, 'val', batch_size, num_workers)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    epochs = 10
-    model = Generator()
-    model.to(device)
-    optimizer = torch.optim.Adam()
-    criteria = nn.L1Loss()
+        def forward(self, x):
+            e1 = self.leakyRelu(self.encode1(x))
+            e2 = self.leakyRelu(self.encode2(e1))
+            e3 = self.leakyRelu(self.encode3(e2))
+            e4 = self.leakyRelu(self.encode4(e3))
+            e5 = self.leakyRelu(self.encode5(e4))
+            e6 = self.leakyRelu(self.encode6(e5))
+            return e6
+        
+
     
-  
-    for epoch in range(epochs):
-        model.train()
-        train_loss = 0.0
-        train_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]")
-        for low_img, light_img in train_loader:
-            low_img.to(device)
-            light_img.to(device)
-            optimizer.zero_grad()
-            pred = model(low_img)
-            loss = criteria(pred, light_img)
-            loss.backward()
-            optimizer.step()
+class Global_Discriminator(nn.Module):
+    def __init__(self, in_channels = 3, kernel_size = 4, stride = 2, padding = 1) -> None:
+        super().__init__()
+        self.encode1 = nn.Conv2d(in_channels=in_channels, out_channels= 32, kernel_size=kernel_size, stride=stride,padding=padding)
+        self.leakyRelu = nn.LeakyReLU()
+        self.encode2 = nn.Conv2d(in_channels=32, out_channels= 64, kernel_size=kernel_size, stride=stride,padding=padding)
+        
+        self.dilated1 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1,padding=padding)
+        self.dilated2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1,padding=2, dilation=2)
+        self.dilated3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1,padding=3, dilation=3)
+        
+        self.conv1 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1, stride=4, padding=0)
+        self.encode3 = nn.Conv2d(in_channels=64, out_channels= 128, kernel_size=kernel_size, stride=stride,padding=padding)  
+        self.encode4 = nn.Conv2d(in_channels=128, out_channels= 256, kernel_size=kernel_size, stride=stride,padding=padding)  
+        self.conv2 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=1, stride=2, padding=0)      
+
+        self.encode5 = nn.Conv2d(in_channels=448, out_channels= 512, kernel_size=kernel_size, stride=stride,padding=padding)  
+        self.encodefix = nn.Conv2d(in_channels=512, out_channels= 512, kernel_size=kernel_size, stride=stride,padding=padding) 
+        self.encode6 = nn.Conv2d(in_channels=512, out_channels= 1, kernel_size=kernel_size, stride=1,padding=1)  
+        
+    def forward(self, x):
+        e1 = self.leakyRelu(self.encode1(x))
+        e2 = self.leakyRelu(self.encode2(e1))
+        
+        di1 = self.leakyRelu(self.dilated1(e2))
+        di2 = self.leakyRelu(self.dilated2(e2))
+        di3 = self.leakyRelu(self.dilated3(e2))
+        
+        di_element = di1 + di2 + di3
+        
+        e3 = self.leakyRelu(self.encode3(di_element))
+        c1 = self.conv1(di_element)
+        e4 = self.leakyRelu(self.encode4(e3))
+        c2 = self.conv2(e3)
+        
+        concat = torch.concat([c1,e4,c2], dim = 1)
+        
+        e5 = self.leakyRelu(self.encode5(concat))
+        efix = self.leakyRelu(self.encodefix(e5))
+        
+        e6 = self.leakyRelu(self.encode6(efix))
+        
+        return e6
+        
+class Discriminator(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.global_dis = Global_Discriminator()
+        self.local_dis = Local_Discriminator()
+        
+    def RandomCrop(self, x):
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
+        H, W = x.shape[2:]
+        crop_size = 128
+        x_rand = torch.randint(0, H - crop_size + 1, (1,)).item()
+        y_rand = torch.randint(0, W - crop_size + 1, (1,)).item()
+        cropped_patch = x[:, :, x_rand : x_rand + crop_size, y_rand : y_rand + crop_size]
+        return cropped_patch.clone().detach()
+        
+    def forward(self, x):
+        loc = self.local_dis(self.RandomCrop(x))
+        glo = self.global_dis(x)
+        return loc + glo # Mục tiêu cho WxH là 3x3 
+        
             
-            train_loss += loss.item()
-            train_bar.set_postfix(loss=loss.item())
-        model.eval()
-        avg_train_loss = train_loss / len(train_loader)
-        valid_loss = 0
-        with torch.no_grad():
-            val_bar = tqdm(valid_loader, desc=f"Epoch {epoch+1}/{epochs} [Valid]")
-            for low_img, light_img in val_bar:
-                low_img.to(device)
-                light_img.to(device)
-                pred = model(low_img)
-                loss = criteria(pred, light_img)
-                valid_loss += loss.item()
-                val_bar.set_postfix(loss=loss.item())
-        avg_valid_loss = valid_loss / len(valid_loader)
