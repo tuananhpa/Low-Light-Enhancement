@@ -27,21 +27,21 @@ def draw_images(model, data_loader, device = torch.cuda, num_images=5):
     model.eval()
     images_drawn = 0
     with torch.no_grad():
-        for low_light, light_img in data_loader:
+        for low_light, light_ in data_loader:
             low_light = low_light.to(device)
-            light_img = light_img.to(device)
+            light_ = light_.to(device)
             pred = model(low_light)
             for i in range(low_light.size(0)):
                 if images_drawn >= num_images:
                     return  
                 
-                low_img = unormalize(low_light[i])
-                pred_img = unormalize(pred[i])
-                light_img = unormalize(light_img[i])
+                # low_img = unormalize(low_light[i])
+                # pred_img = unormalize(pred[i])
+                # light_img = unormalize(light_img[i])
                 
-                low_img = np.transpose(low_img.numpy(), (1,2,0))
-                pred_img = np.transpose(pred_img.numpy(), (1,2,0))
-                light_img = np.transpose(light_img.numpy(), (1,2,0))
+                low_img = np.transpose(low_light[i].cpu().numpy(), (1,2,0))
+                pred_img = np.transpose(pred[i].cpu().numpy(), (1,2,0))
+                light_img = np.transpose(light_[i].cpu().numpy(), (1,2,0))
                 
                 low_img = np.clip(low_img, 0, 1)
                 pred_img = np.clip(pred_img, 0, 1)
