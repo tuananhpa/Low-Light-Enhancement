@@ -111,7 +111,7 @@ class Generator(nn.Module):
         self.decoder4 = Decoder(512,128, use_tanh=False)
         self.decoder3 = Decoder(256,64, use_tanh=False)
         self.decoder2 = Decoder(128,32, use_tanh= False)
-        self.decoder1 = Decoder(64,3, use_deconv=False)
+        self.decoder1 = Decoder(64,3, use_deconv=False, use_conv=False)
         
     def forward(self, x):
         e1 = self.encoder1(x)
