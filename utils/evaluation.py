@@ -4,9 +4,31 @@ import torchvision
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from torchmetrics.functional import peak_signal_noise_ratio as psnr
+from torchmetrics.functional import structural_similarity_index_measure as ssim 
+import lpips 
 
-def evaluate_model(model, data_loader, device = torch.cuda, loss_fn = nn.L1Loss()):
-    total_loss = 0.0
+def metrics(preds, targets, model_lpips = lpips.LPIPS(net='vgg')):
+    val_psnr = psnr(preds, targets, 1.0)
+    val_ssim = ssim(preds, targets, 1.0)
+
+
+    preds_ = (preds*2)-1
+    targets_ = targets*2 -1
+    val_lpips = model_lpips(preds_, targets_)
+    val_lpips = val_lpips.mean()
+    
+    return {
+        "PSNR": val_psnr.item(),
+        "SSIM": val_ssim.item(),
+        "LPIPS": val_lpips.item()
+    }
+    
+def evaluate_model(model, data_loader, device = torch.device("cuda" if torch.cuda.is_available() else "cpu"), loss_fn = nn.L1Loss()):
+    psnr_loss = 0.0
+    ssim_loss = 0.0
+    lpips_loss = 0.0
+    model_lpips = lpips.LPIPS(net='vgg').to(device)
     eval_bar = tqdm(data_loader, desc="Evaluating")
     model.to(device)
     for low_light, light_img in eval_bar:
@@ -15,10 +37,14 @@ def evaluate_model(model, data_loader, device = torch.cuda, loss_fn = nn.L1Loss(
         model.eval()
         with torch.no_grad():
             pred = model(low_light)
-            loss = loss_fn(pred, light_img)
-            total_loss += loss.item()
-    avg_loss = total_loss / len(data_loader)
-    return avg_loss
+            metrics_ = metrics(pred, light_img, model_lpips)
+            psnr_loss += metrics_['PSNR']
+            ssim_loss += metrics_["SSIM"]
+            lpips_loss += metrics_["LPIPS"]
+    psnr_avg = psnr_loss / len(data_loader)
+    ssim_avg = ssim_loss / len(data_loader)
+    lpips_avg = lpips_loss / len(data_loader)
+    print(f"PSNR LOSS: {psnr_avg} \n SSIM LOSS: {ssim_avg} \n LPIPS LOSS: {lpips_avg}") 
 
 def unormalize(img):
     return (img+1.0)/2.0

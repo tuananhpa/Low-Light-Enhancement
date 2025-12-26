@@ -2,47 +2,72 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# ------------------------
+########################################
 # Decomposition Network
-# ------------------------
+########################################
 class DecomNet(nn.Module):
-    def __init__(self, channel=64):
+    def __init__(self, in_channels=3, base_channels=64):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channel, 3, 1, 1)
-        self.conv2 = nn.Conv2d(channel, channel, 3, 1, 1)
-        self.conv3 = nn.Conv2d(channel, channel, 3, 1, 1)
-        self.conv4 = nn.Conv2d(channel, 4, 3, 1, 1)  # R(3) + L(1)
+        self.net = nn.Sequential(
+            nn.Conv2d(in_channels, base_channels, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(base_channels, base_channels, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(base_channels, base_channels, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(base_channels, 4, 3, 1, 1),
+            nn.Sigmoid()
+        )
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        out = self.conv4(x)
-        R = torch.sigmoid(out[:, :3, :, :])
-        L = torch.sigmoid(out[:, 3:, :, :])
+        out = self.net(x)
+        R = out[:, :3, :, :]      # Reflectance
+        L = out[:, 3:, :, :]      # Illumination (1 channel)
         return R, L
 
 
-# ------------------------
-# Illumination Enhancement Network
-# ------------------------
+########################################
+# Enhance Network (Illumination)
+########################################
 class EnhanceNet(nn.Module):
-    def __init__(self, channel=64):
+    def __init__(self, in_channels=1, base_channels=64):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, channel, 3, 1, 1)
-        self.conv2 = nn.Conv2d(channel, channel, 3, 1, 1)
-        self.conv3 = nn.Conv2d(channel, 1, 3, 1, 1)
+
+        # Encoder
+        self.enc1 = nn.Conv2d(in_channels, base_channels, 3, 1, 1)
+        self.enc2 = nn.Conv2d(base_channels, base_channels, 3, 1, 1)
+        self.enc3 = nn.Conv2d(base_channels, base_channels, 3, 1, 1)
+
+        # Multi-scale
+        self.scale1 = nn.Conv2d(base_channels, base_channels, 3, 1, 1)
+        self.scale2 = nn.Conv2d(base_channels, base_channels, 5, 1, 2)
+        self.scale3 = nn.Conv2d(base_channels, base_channels, 7, 1, 3)
+
+        # Decoder
+        self.dec = nn.Sequential(
+            nn.Conv2d(base_channels * 3, base_channels, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(base_channels, 1, 3, 1, 1),
+            nn.Sigmoid()
+        )
 
     def forward(self, L):
-        x = F.relu(self.conv1(L))
-        x = F.relu(self.conv2(x))
-        out = torch.sigmoid(self.conv3(x))
-        return out
+        x = F.relu(self.enc1(L))
+        x = F.relu(self.enc2(x))
+        x = F.relu(self.enc3(x))
+
+        s1 = self.scale1(x)
+        s2 = self.scale2(x)
+        s3 = self.scale3(x)
+
+        concat = torch.cat([s1, s2, s3], dim=1)
+        L_enhanced = self.dec(concat)
+        return L_enhanced
 
 
-# ------------------------
-# Retinex-Net Wrapper
-# ------------------------
+########################################
+# Retinex-Net (Full Model)
+########################################
 class RetinexNet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -51,6 +76,6 @@ class RetinexNet(nn.Module):
 
     def forward(self, x):
         R, L = self.decom(x)
-        L_enhanced = self.enhance(L)
-        output = R * L_enhanced
-        return output, R, L, L_enhanced
+        L_hat = self.enhance(L)
+        enhanced = R * L_hat
+        return enhanced, R, L, L_hat
