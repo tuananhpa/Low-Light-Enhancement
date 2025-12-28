@@ -146,9 +146,7 @@ class Local_Discriminator(nn.Module):
             e5 = self.leakyRelu(self.encode5(e4))
             e6 = self.leakyRelu(self.encode6(e5))
             return e6
-        
 
-    
 class Global_Discriminator(nn.Module):
     def __init__(self, in_channels = 3, kernel_size = 4, stride = 2, padding = 1) -> None:
         super().__init__()

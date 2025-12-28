@@ -21,7 +21,7 @@ class DecomNet(nn.Module):
 
     def forward(self, x):
         out = self.net(x)
-        R = out[:, :3, :, :]      # Reflectance
+        R = out[:, :3, :, :]      # Reflectance (RGB)
         L = out[:, 3:, :, :]      # Illumination (1 channel)
         return R, L
 
@@ -38,7 +38,7 @@ class EnhanceNet(nn.Module):
         self.enc2 = nn.Conv2d(base_channels, base_channels, 3, 1, 1)
         self.enc3 = nn.Conv2d(base_channels, base_channels, 3, 1, 1)
 
-        # Multi-scale
+        # Multi-scale feature extraction
         self.scale1 = nn.Conv2d(base_channels, base_channels, 3, 1, 1)
         self.scale2 = nn.Conv2d(base_channels, base_channels, 5, 1, 2)
         self.scale3 = nn.Conv2d(base_channels, base_channels, 7, 1, 3)
@@ -62,6 +62,7 @@ class EnhanceNet(nn.Module):
 
         concat = torch.cat([s1, s2, s3], dim=1)
         L_enhanced = self.dec(concat)
+
         return L_enhanced
 
 
@@ -74,8 +75,30 @@ class RetinexNet(nn.Module):
         self.decom = DecomNet()
         self.enhance = EnhanceNet()
 
-    def forward(self, x):
+    # =========================
+    # TRAINING FORWARD
+    # =========================
+    def forward_train(self, x):
+        """
+        Dùng cho TRAINING:
+        return đầy đủ để tính loss
+        """
         R, L = self.decom(x)
         L_hat = self.enhance(L)
         enhanced = R * L_hat
+
         return enhanced, R, L, L_hat
+
+    # =========================
+    # INFERENCE / DEMO FORWARD
+    # =========================
+    def forward(self, x):
+        """
+        Dùng cho INFERENCE / STREAMLIT:
+        CHỈ return ảnh enhanced RGB
+        """
+        R, L = self.decom(x)
+        L_hat = self.enhance(L)
+        enhanced = R * L_hat
+
+        return enhanced
