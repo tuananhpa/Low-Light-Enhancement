@@ -1,5 +1,5 @@
 from utils.dataset import get_loader
-from models.modules import Generator, Discriminator
+from models.gan import Generator, Discriminator
 from turtle import forward
 from torch._dynamo.convert_frame import input_codes
 from utils.dataset import get_loader

@@ -15,13 +15,13 @@ import torchvision.datasets as datasets
 from torch.utils.data import Dataset, DataLoader
 import random
 
-def load_data(data_path): # folder
-    folder_list = os.listdir(data_path)
+def load_image(file_path): # folder
+    folder_list = os.listdir(file_path)
     folder_data = {}
     for folder_name in folder_list:
         folder_data[folder_name] = {}
-        image_list = os.listdir(os.path.join(data_path, folder_name))
-        folder_dir = os.path.join(data_path, folder_name)
+        image_list = os.listdir(os.path.join(file_path, folder_name))
+        folder_dir = os.path.join(file_path, folder_name)
         for image_name in image_list:
             image_path = os.path.join(folder_dir, image_name)
             image = Image.open(image_path)

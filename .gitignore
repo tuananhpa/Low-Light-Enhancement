@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
+.venv/
 checkpoints/
 checkpoint/
-*.pth
+
 .ipynb_checkpoints/
