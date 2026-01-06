@@ -42,33 +42,39 @@ Low-Light-Enhancement/
 │       Đặc biệt: pipeline tiền xử lý dataset nằm tại utils/dataset.py
 ├── models/
 │   └── Chứa các logic và kiến trúc cho các models nâng cao ảnh sáng yếu.
-│       Bao gồm các module cho Encoder, Decoder, Generator và Discriminator.
+│       Bao gồm các module gan, mirnetv2, retinex
 ├── dataset/
-│   └── Chứa các ảnh sáng đủ từ dataset BDD100K (không chứa ảnh low-light gốc).
+│   └── Chứa các ảnh sáng đủ từ dataset BDD100K được chia thành 3 folder train (7000), validation (2000) và test (1000)
 ├── checkpoint/
 │   └── Lưu trữ các checkpoint hoặc trọng số của các mô hình sau mỗi lần train.
-├── config/
-│   └── Chứa các file cấu hình cho experiment, hyperparameter,...
-├── result/
-│   └── Lưu các kết quả sinh ra sau quá trình huấn luyện, thử nghiệm, các hình ảnh enhanced, report, log,...
+├── best_model_state/
+│    └── Chứa các kết quả tốt nhất của từng model
+├── notebook/
+│   └── Chứa các file chạy bằng ipynb
 ├── requirements.txt
 │   └── Danh sách các package cần cài đặt cho project.
 ├── README.md
 │   └── File giới thiệu dự án.
-└── (Các folder/file khác có thể bổ sung nếu cần)
+├── Gan.py
+│   └── File chạy training model GAN
+├── mirnetv2_main.py
+│   └── File chạy training model Mirnetv2
+├── Retinex_main.py
+│   └── File chạy training model Retinex
+└── streamlit.py
+   └── File chạy demo
 ```
 
 ### **utils/**  
-Chứa các hàm tiện ích, đặc biệt là pipeline tiền xử lý dataset trong file `utils/dataset.py`. Khi lấy từng index trong dataset, sẽ tạo ra ảnh low-light tương ứng để phục vụ cho quá trình training.
+Chứa các hàm tiện ích,
+- pipeline tiền xử lý dataset trong file `utils/dataset.py`. Khi lấy từng index trong dataset, sẽ tạo ra ảnh low-light tương ứng để phục vụ cho quá trình training.
+- hàm đánh giá metrics `utils/evaluation.py` chứa các logic đánh giá model
 
 ### **models/**  
 Chứa logic, kiến trúc các mô hình Deep Learning cho bài toán nâng cao ảnh sáng yếu. Bao gồm các module chính:
-- **Encoder**: Mã hóa đặc trưng từ ảnh input.
-- **Decoder**: Giải mã đặc trưng thành ảnh output sáng.
-- **Generator**: Sinh ảnh sáng từ ảnh low-light.
-- **Discriminator**: Phân biệt ảnh giả do Generator sinh ra với ảnh thật.
-
-
+- Gan
+- mirnetv2_model
+- Retinex
 
 ## 5. Hướng dẫn sử dụng
 
@@ -85,24 +91,28 @@ pip install -r requirements.txt
 - Đặt ảnh daylight vào folder `dataset/`.
 - Việc sinh ảnh low-light sẽ tự động xảy ra khi train model (theo pipeline đã mô tả).
 
-### 5.3. Chạy thử nghiệm
-
-Ví dụ:
-
+### 5.3. Chạy training model
+GANs:
 ```bash
-python train.py --config config/train_config.yaml
+python Gan.py
 ```
 
-Kết quả sẽ được lưu vào folder `result/` và checkpoint vào folder `checkpoint/`.
+MIRnetv2: 
+```bash
+python mirnetv2_main.py
+```
 
-## 6. Đóng góp
+Retinex:
+```bash
+python Retinex_main.py
+```
 
-Nếu bạn muốn đóng góp code hoặc báo lỗi, vui lòng fork repo, tạo pull request hoặc mở issue mới.
+Kết quả sẽ được lưu checkpoint vào folder `checkpoints/ tên model`.
 
-## 7. License
+## 6. Demo 
+Chạy streamlit để mở web demo:
+```bash
+streamlit run streamlit.py
+```
 
-Dự án hiện tại sử dụng giấy phép MIT. Xem chi tiết trong [LICENSE](LICENSE).
 
----
-
-Nếu có câu hỏi, vui lòng liên hệ qua GitHub Issues hoặc email.
