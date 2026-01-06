@@ -10,7 +10,7 @@ Chỉ chứa các ảnh sáng đủ từ bộ dữ liệu BDD100K. Ảnh low-lig
 ## 2. Thông tin về Dataset
 
 - **Nguồn:** [BDD100K Dataset](https://bdd-data.berkeley.edu/)
-- **Số lượng ảnh:** Khoảng 100,000 ảnh đầy đủ ánh sáng được chụp từ nhiều bối cảnh giao thông khác nhau.
+- **Số lượng ảnh:** Khoảng 10,000 ảnh đầy đủ ánh sáng được chụp từ nhiều bối cảnh giao thông khác nhau.
 - **Tải dataset:**  
   - Truy cập: https://bdd-data.berkeley.edu/
   - Link trực tiếp: [Download Images](https://bdd-data.berkeley.edu/view/bdd100k)
@@ -32,6 +32,11 @@ Chỉ chứa các ảnh sáng đủ từ bộ dữ liệu BDD100K. Ảnh low-lig
 
 - **Input**: Một bức ảnh chụp trong điều kiện ánh sáng yếu (low-light image).
 - **Output**: Một bức ảnh đã được tăng cường, sáng hơn, giữ lại nhiều chi tiết và màu sắc tự nhiên hơn.
+
+## 4. Metrics
+- **PSNR (Peak Signal-to-Noise Ratio)**: chỉ số đo lường độ sai lệch giữa các giá trị pixel của ảnh sau khi tăng cường so với ảnh gốc
+- **SSIM (Structural Similarity Index)**: Chỉ số đo lường độ tương đồng về cấu trúc.
+- **LPIPS (Learned Perceptual Image Patch Similarity)**: đánh giá chất lượng cảm quan (perceptual quality) – tức là mắt người nhìn thấy ảnh có "thật" hay không.
 
 ## 4. Sơ đồ cấu trúc folder
 
@@ -114,5 +119,6 @@ Chạy streamlit để mở web demo:
 ```bash
 streamlit run streamlit.py
 ```
+
 
 
